@@ -1,0 +1,97 @@
+//営業車の検索
+function findSalescar() {
+
+  //シートの取得
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("検索条件");
+  const addressSheet = ss.getSheetByName("営業車一覧");
+
+  //検索条件シートの既存データをクリア
+  const sheetRange = sheet.getRange(5,5,7,1);
+  sheetRange.clearContent();
+
+  //営業車のIDを取得
+  const addressRows = addressSheet.getLastRow()-4;
+  const addressRange = addressSheet.getRange(5,2,addressRows,1);
+  const addresses = addressRange.getValues();
+
+  //検索条件の取得
+  const conditionRange = sheet.getRange(5,2,1,3);
+  const conditions = conditionRange.getDisplayValues();
+
+  const date_str = conditions[0][0];
+  const startTime = conditions[0][1];
+  const endTime = conditions[0][2];
+
+  //開始・返却日時データの生成
+  const start = new Date(`${date_str} ${startTime}`);
+  const end = new Date(`${date_str} ${endTime}`);
+
+  //結果を格納する配列を宣言
+  const outputArray = [];
+
+  //営業車の繰り返し処理
+  addresses.forEach(function(address){
+
+    //カレンダーを取得
+    const calendar = CalendarApp.getCalendarById(address);
+    const number = calendar.getName();
+
+    //Googleカレンダーに予定が入っているかを確認
+    const events = calendar.getEvents(start,end);
+
+    if(events.length == 0){
+
+      outputArray.push([number]);
+    }
+
+  })
+
+  //検索条件シートに記載
+  const outputRange = sheet.getRange(5,5,outputArray.length,1);
+  outputRange.setValues(outputArray); 
+
+}
+
+//営業車の予約
+function reserveSalescar(){
+
+  //シートの取得
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("検索条件");
+  const addressSheet = ss.getSheetByName("営業車一覧");
+
+  //営業車のIDを取得
+  const addressRows = addressSheet.getLastRow()-4;
+  const addressRange = addressSheet.getRange(5,2,addressRows,1);
+  const addresses = addressRange.getValues();
+
+  //登録条件の取得
+  const conditionRange = sheet.getRange(15,2,1,4);
+  const conditions = conditionRange.getDisplayValues();
+  const startTime_str = conditions[0][0];
+  const endTime_str = conditions[0][1];
+  const title = conditions[0][2];
+  const reserveNumber = conditions[0][3];
+
+  const startTime = new Date(startTime_str);
+  const endTime = new Date(endTime_str);
+
+  //ナンバーからカレンダーを取得
+  const reserveCars = CalendarApp.getCalendarsByName(reserveNumber);
+  const reserveCar = reserveCars[0];
+  const reserveCarEvent = reserveCar.getEvents(startTime,endTime);
+
+  const message = sheet.getRange(17,5);
+
+  //指定の営業車が空いている場合
+  if(reserveCarEvent.length == 0){
+    reserveCar.createEvent(title,startTime,endTime);
+    message.setValue("登録完了");
+
+  }else{
+    message.setValue("NG");
+
+  }
+
+}
